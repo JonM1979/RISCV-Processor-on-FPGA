@@ -1,0 +1,136 @@
+// summary_tasks.svh
+
+// Summary of CPU performance statistics measuring performance
+function automatic real calc_cpi;
+begin
+    if (retired_count != 0)
+        return cycle_count * 1.0 / retired_count;
+    else
+        return 0.0;
+end
+endfunction
+
+
+function automatic real calc_ipc;
+begin
+    if (cycle_count != 0)
+        return retired_count * 1.0 / cycle_count;
+    else
+        return 0.0;
+end
+endfunction
+
+
+function automatic real calc_stall_rate;
+begin
+    if (cycle_count != 0)
+        return stall_count * 100.0 / cycle_count;
+    else
+        return 0.0;
+end
+endfunction
+
+
+function automatic real calc_control_redirect_rate;
+begin
+    if (retired_count != 0)
+        return control_count * 100.0 / retired_count;
+    else
+        return 0.0;
+end
+endfunction
+
+
+function automatic real calc_memory_instruction_rate;
+begin
+    if (retired_count != 0)
+        return (load_count + store_count) * 100.0 / retired_count;
+    else
+        return 0.0;
+end
+endfunction
+
+
+task automatic final_summary;
+begin
+    $fdisplay(summary_file, "\n==================== FINAL SUMMARY ====================");
+
+    $fdisplay(summary_file, "\n[GENERAL PERFORMANCE]");
+    $fdisplay(summary_file, "Cycles                   : %0d", cycle_count);
+    $fdisplay(summary_file, "Retired Instructions     : %0d", retired_count);
+    $fdisplay(summary_file, "CPI                      : %0f", calc_cpi());
+    $fdisplay(summary_file, "IPC                      : %0f", calc_ipc());
+
+    $fdisplay(summary_file, "\n[PIPELINE HAZARDS]");
+    $fdisplay(summary_file, "Stall Cycles             : %0d", stall_count);
+    $fdisplay(summary_file, "Stall Rate               : %0f%%", calc_stall_rate());
+
+    $fdisplay(summary_file, "\n[CONTROL FLOW]");
+    $fdisplay(summary_file, "Taken Branches           : %0d", branch_taken_count);
+    $fdisplay(summary_file, "Taken JALs               : %0d", jal_taken_count);
+    $fdisplay(summary_file, "Taken JALRs              : %0d", jalr_taken_count);
+    $fdisplay(summary_file, "Taken Jumps Total        : %0d", jal_taken_count + jalr_taken_count);
+    $fdisplay(summary_file, "Control Redirects/Flushes: %0d", control_count);
+
+    $fdisplay(summary_file, "");
+    $fdisplay(summary_file, "[BRANCH PREDICTION]");
+    $fdisplay(summary_file, "Conditional Branches     : %0d", branch_count);
+    $fdisplay(summary_file, "Mispredictions           : %0d", branch_mispredicts);
+    if (branch_count > 0) begin
+        $fdisplay(summary_file, "Prediction Accuracy      : %0.2f %%",
+                  (branch_count - branch_mispredicts) * 100.0 / branch_count);
+    end
+    else begin
+        $fdisplay(summary_file, "Prediction Accuracy      : n/a (no branches)");
+    end
+    if (retired_count > 0) begin
+        // Mispredictions per thousand instructions, the standard metric
+        $fdisplay(summary_file, "MPKI                     : %0.2f",
+                  branch_mispredicts * 1000.0 / retired_count);
+    end
+    $fdisplay(summary_file, "Unpredicted JALRs        : %0d", jalr_count_bp);
+    $fdisplay(summary_file, "Control Redirect Rate    : %0f%%", calc_control_redirect_rate());
+
+    $fdisplay(summary_file, "\n[INSTRUCTION MIX]");
+    $fdisplay(summary_file, "R-Type Instructions      : %0d", rtype_count);
+    $fdisplay(summary_file, "I-Type Instructions      : %0d", itype_count);
+    $fdisplay(summary_file, "Load Instructions        : %0d", load_count);
+    $fdisplay(summary_file, "Store Instructions       : %0d", store_count);
+    $fdisplay(summary_file, "Branch Instructions      : %0d", branch_instr_count);
+    $fdisplay(summary_file, "JAL Instructions         : %0d", jal_instr_count);
+    $fdisplay(summary_file, "JALR Instructions        : %0d", jalr_instr_count);
+    $fdisplay(summary_file, "LUI Instructions         : %0d", lui_instr_count);
+    $fdisplay(summary_file, "AUIPC Instructions       : %0d", auipc_instr_count);
+    $fdisplay(summary_file, "FENCE Instructions       : %0d", fence_instr_count);
+    $fdisplay(summary_file, "System Instructions      : %0d", system_instr_count);
+    $fdisplay(summary_file, "Instruction Mix Total    : %0d",
+            rtype_count +
+            itype_count +
+            load_count +
+            store_count +
+            branch_instr_count +
+            jal_instr_count +
+            jalr_instr_count +
+            lui_instr_count +
+            auipc_instr_count +
+            fence_instr_count +
+            system_instr_count);
+
+    $fdisplay(summary_file, "\n[MEMORY ACTIVITY]");
+    $fdisplay(summary_file, "Memory Instructions      : %0d", load_count + store_count);
+    $fdisplay(summary_file, "Memory Instruction Rate  : %0f%%", calc_memory_instruction_rate());
+
+    $fdisplay(summary_file, "\n[FORWARDING ACTIVITY]");
+    $fdisplay(summary_file, "EX/MEM Forward A Count   : %0d", ex_mem_forward_a_count);
+    $fdisplay(summary_file, "EX/MEM Forward B Count   : %0d", ex_mem_forward_b_count);
+    $fdisplay(summary_file, "MEM/WB Forward A Count   : %0d", mem_wb_forward_a_count);
+    $fdisplay(summary_file, "MEM/WB Forward B Count   : %0d", mem_wb_forward_b_count);
+    $fdisplay(summary_file, "Total Forward Events     : %0d", total_forward_count);
+
+    $fdisplay(summary_file, "\n=======================================================\n");
+
+    $display("\nSUMMARY:");
+
+    $display("PROCESSOR SUCCESS; PLEASE CHECK SUMMARY FILES FOR PERFORMANCE");
+end
+endtask
